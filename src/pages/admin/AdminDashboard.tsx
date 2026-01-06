@@ -12,6 +12,7 @@ import AdminMobileNav from "@/components/layout/AdminMobileNav";
 import StatsCard from "@/components/dashboard/StatsCard";
 import StatusBadge from "@/components/complaints/StatusBadge";
 import PriorityBadge from "@/components/complaints/PriorityBadge";
+import Breadcrumbs from "@/components/ui/breadcrumbs";
 import { Link } from "react-router-dom";
 
 const recentComplaints = [
@@ -66,6 +67,12 @@ const AdminDashboard = () => {
         <AdminMobileNav />
 
         <main className="flex-1 p-4 lg:p-8">
+          {/* Breadcrumbs */}
+          <Breadcrumbs
+            items={[{ label: "Dashboard" }]}
+            className="mb-4 animate-fade-in"
+          />
+
           {/* Header */}
           <div className="mb-8 animate-fade-in">
             <h1 className="text-2xl font-bold text-foreground sm:text-3xl">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Bell, User, LogOut } from "lucide-react";
+import { Menu, X, Bell, User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,14 +9,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
   userName?: string;
+  userEmail?: string;
+  userAvatar?: string;
 }
 
-const Navbar = ({ isLoggedIn = false, userName = "John Doe" }: NavbarProps) => {
+const Navbar = ({ 
+  isLoggedIn = false, 
+  userName = "John Doe",
+  userEmail = "john@example.com",
+  userAvatar = ""
+}: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -34,8 +43,17 @@ const Navbar = ({ isLoggedIn = false, userName = "John Doe" }: NavbarProps) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -68,6 +86,8 @@ const Navbar = ({ isLoggedIn = false, userName = "John Doe" }: NavbarProps) => {
 
           {/* Right Side */}
           <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+
             {isLoggedIn && (
               <>
                 <Button variant="ghost" size="icon" className="relative">
@@ -80,27 +100,36 @@ const Navbar = ({ isLoggedIn = false, userName = "John Doe" }: NavbarProps) => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-full">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                        <User className="h-4 w-4 text-primary" />
-                      </div>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={userAvatar} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                          {getInitials(userName)}
+                        </AvatarFallback>
+                      </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-2 py-1.5">
-                      <p className="text-sm font-medium">{userName}</p>
-                      <p className="text-xs text-muted-foreground">john@example.com</p>
+                    <div className="px-2 py-2">
+                      <p className="text-sm font-medium text-foreground">{userName}</p>
+                      <p className="text-xs text-muted-foreground">{userEmail}</p>
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/profile">Profile Settings</Link>
+                      <Link to="/profile" className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Profile
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/my-complaints">My Complaints</Link>
+                      <Link to="/my-complaints" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        My Complaints
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/login" className="text-destructive">
-                        <LogOut className="mr-2 h-4 w-4" />
+                      <Link to="/login" className="flex items-center gap-2 text-destructive">
+                        <LogOut className="h-4 w-4" />
                         Sign Out
                       </Link>
                     </DropdownMenuItem>
@@ -124,6 +153,20 @@ const Navbar = ({ isLoggedIn = false, userName = "John Doe" }: NavbarProps) => {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="border-t border-border py-4 md:hidden animate-fade-in">
+            {isLoggedIn && (
+              <div className="flex items-center gap-3 px-4 pb-4 mb-4 border-b border-border">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={userAvatar} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {getInitials(userName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{userName}</p>
+                  <p className="text-xs text-muted-foreground">{userEmail}</p>
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
@@ -140,6 +183,24 @@ const Navbar = ({ isLoggedIn = false, userName = "John Doe" }: NavbarProps) => {
                   {link.label}
                 </Link>
               ))}
+              {isLoggedIn && (
+                <>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-4 py-3 text-sm font-medium rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    Profile Settings
+                  </Link>
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-4 py-3 text-sm font-medium rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    Sign Out
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

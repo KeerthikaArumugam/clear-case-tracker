@@ -2,6 +2,7 @@ import { TrendingUp, Clock, Target, PieChart } from "lucide-react";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AdminMobileNav from "@/components/layout/AdminMobileNav";
 import StatsCard from "@/components/dashboard/StatsCard";
+import Breadcrumbs from "@/components/ui/breadcrumbs";
 import {
   BarChart,
   Bar,
@@ -62,6 +63,12 @@ const AdminReports = () => {
         <AdminMobileNav />
 
         <main className="flex-1 p-4 lg:p-8">
+          {/* Breadcrumbs */}
+          <Breadcrumbs
+            items={[{ label: "Reports" }]}
+            className="mb-4 animate-fade-in"
+          />
+
           {/* Header */}
           <div className="mb-8 animate-fade-in">
             <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
