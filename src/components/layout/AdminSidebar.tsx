@@ -9,10 +9,13 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
+import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
 
 const menuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -81,8 +84,31 @@ const AdminSidebar = () => {
         </ul>
       </nav>
 
-      {/* Logout */}
-      <div className="border-t border-sidebar-border p-3">
+      {/* Footer */}
+      <div className="border-t border-sidebar-border p-3 space-y-2">
+        {/* Theme Switcher */}
+        {!collapsed && (
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-sm text-sidebar-foreground/70">Theme</span>
+            <ThemeSwitcher />
+          </div>
+        )}
+
+        {/* Profile Link */}
+        <Link
+          to="/admin/profile"
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+        >
+          <Avatar className="h-6 w-6">
+            <AvatarImage src="" />
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
+              AD
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && <span>Admin Profile</span>}
+        </Link>
+
+        {/* Logout */}
         <Link
           to="/login"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"

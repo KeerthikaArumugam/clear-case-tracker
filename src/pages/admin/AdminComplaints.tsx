@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, Download, MoreHorizontal } from "lucide-react";
+import { Search, Filter, Download, MoreHorizontal, Trash2, UserPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,12 +14,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AdminMobileNav from "@/components/layout/AdminMobileNav";
 import StatusBadge from "@/components/complaints/StatusBadge";
 import PriorityBadge from "@/components/complaints/PriorityBadge";
+import Breadcrumbs from "@/components/ui/breadcrumbs";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const complaints = [
   {
@@ -75,9 +79,14 @@ const complaints = [
 ];
 
 const AdminComplaints = () => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredComplaints = complaints.filter((complaint) => {
     const matchesSearch =
@@ -93,6 +102,26 @@ const AdminComplaints = () => {
     return matchesSearch && matchesStatus && matchesDepartment;
   });
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsDeleting(false);
+    setDeleteDialogOpen(false);
+    toast({
+      title: "Complaint Deleted",
+      description: `Complaint ${selectedComplaint} has been deleted.`,
+    });
+  };
+
+  const handleCloseComplaint = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    setCloseDialogOpen(false);
+    toast({
+      title: "Complaint Closed",
+      description: `Complaint ${selectedComplaint} has been marked as resolved.`,
+    });
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
@@ -101,6 +130,12 @@ const AdminComplaints = () => {
         <AdminMobileNav />
 
         <main className="flex-1 p-4 lg:p-8">
+          {/* Breadcrumbs */}
+          <Breadcrumbs
+            items={[{ label: "Complaints" }]}
+            className="mb-4 animate-fade-in"
+          />
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 animate-fade-in">
             <div>
@@ -218,8 +253,30 @@ const AdminComplaints = () => {
                                 View Details
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Assign Staff</DropdownMenuItem>
-                            <DropdownMenuItem>Update Status</DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Assign Staff
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedComplaint(complaint.id);
+                                setCloseDialogOpen(true);
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Close Complaint
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                setSelectedComplaint(complaint.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -233,10 +290,9 @@ const AdminComplaints = () => {
           {/* Cards - Mobile */}
           <div className="lg:hidden space-y-3 animate-slide-up" style={{ animationDelay: "0.1s" }}>
             {filteredComplaints.map((complaint) => (
-              <Link
+              <div
                 key={complaint.id}
-                to={`/admin/complaints/${complaint.id}`}
-                className="block card-elevated p-4"
+                className="card-elevated p-4"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-muted-foreground">{complaint.id}</span>
@@ -245,16 +301,58 @@ const AdminComplaints = () => {
                     <PriorityBadge priority={complaint.priority} />
                   </div>
                 </div>
-                <h3 className="font-medium text-foreground mb-2">{complaint.title}</h3>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <Link to={`/admin/complaints/${complaint.id}`}>
+                  <h3 className="font-medium text-foreground mb-2 hover:text-primary transition-colors">
+                    {complaint.title}
+                  </h3>
+                </Link>
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                   <span>{complaint.department}</span>
                   <span>{complaint.date}</span>
                 </div>
-              </Link>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" asChild>
+                    <Link to={`/admin/complaints/${complaint.id}`}>View</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedComplaint(complaint.id);
+                      setCloseDialogOpen(true);
+                    }}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         </main>
       </div>
+
+      {/* Delete Confirmation */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Complaint"
+        description={`Are you sure you want to delete complaint ${selectedComplaint}? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        onConfirm={handleDelete}
+        isLoading={isDeleting}
+      />
+
+      {/* Close Confirmation */}
+      <ConfirmationDialog
+        open={closeDialogOpen}
+        onOpenChange={setCloseDialogOpen}
+        title="Close Complaint"
+        description={`Are you sure you want to mark complaint ${selectedComplaint} as resolved? This will notify the user.`}
+        confirmText="Close Complaint"
+        variant="success"
+        onConfirm={handleCloseComplaint}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/Navbar";
 import StatsCard from "@/components/dashboard/StatsCard";
 import ComplaintCard from "@/components/complaints/ComplaintCard";
+import FloatingActionButton from "@/components/ui/floating-action-button";
 
 const recentComplaints = [
   {
@@ -41,9 +42,9 @@ const recentComplaints = [
 const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn userName="John Doe" />
+      <Navbar isLoggedIn userName="John Doe" userEmail="john@example.com" />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-24 lg:pb-8">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
@@ -54,8 +55,8 @@ const UserDashboard = () => {
           </p>
         </div>
 
-        {/* Action Button */}
-        <div className="mb-8 animate-slide-up">
+        {/* Action Button - Desktop */}
+        <div className="mb-8 animate-slide-up hidden lg:block">
           <Link to="/submit-complaint">
             <Button size="lg" variant="gradient" className="w-full sm:w-auto">
               <PlusCircle className="h-5 w-5" />
@@ -65,7 +66,7 @@ const UserDashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-slide-up" style={{ animationDelay: "0.1s" }}>
+        <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4 animate-slide-up" style={{ animationDelay: "0.1s" }}>
           <StatsCard
             title="Total Complaints"
             value={12}
@@ -111,6 +112,9 @@ const UserDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Floating Action Button - Mobile */}
+      <FloatingActionButton to="/submit-complaint" label="Raise Complaint" />
     </div>
   );
 };
