@@ -3,7 +3,6 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  TrendingUp,
   Users,
   Building2,
 } from "lucide-react";
@@ -14,51 +13,46 @@ import StatusBadge from "@/components/complaints/StatusBadge";
 import PriorityBadge from "@/components/complaints/PriorityBadge";
 import Breadcrumbs from "@/components/ui/breadcrumbs";
 import { Link } from "react-router-dom";
-
-const recentComplaints = [
-  {
-    id: "CMP-2024-001",
-    title: "Water leakage in Block A",
-    department: "Maintenance",
-    status: "in-progress" as const,
-    priority: "high" as const,
-    date: "Jan 5, 2024",
-  },
-  {
-    id: "CMP-2024-002",
-    title: "Broken AC unit in Room 302",
-    department: "Facilities",
-    status: "pending" as const,
-    priority: "medium" as const,
-    date: "Jan 4, 2024",
-  },
-  {
-    id: "CMP-2024-003",
-    title: "Network issues in Library",
-    department: "IT Department",
-    status: "pending" as const,
-    priority: "high" as const,
-    date: "Jan 3, 2024",
-  },
-  {
-    id: "CMP-2024-004",
-    title: "Parking lot lighting",
-    department: "Public Works",
-    status: "resolved" as const,
-    priority: "low" as const,
-    date: "Jan 2, 2024",
-  },
-];
-
-const departmentStats = [
-  { name: "Maintenance", complaints: 45, resolved: 38 },
-  { name: "Facilities", complaints: 32, resolved: 28 },
-  { name: "IT Department", complaints: 28, resolved: 20 },
-  { name: "Public Works", complaints: 22, resolved: 18 },
-  { name: "Security", complaints: 15, resolved: 14 },
-];
+import { useMemo } from "react";
+import { formatDateShort, listAllComplaints } from "@/lib/appData";
 
 const AdminDashboard = () => {
+  const complaints = useMemo(() => listAllComplaints(), []);
+
+  const stats = useMemo(() => {
+    const total = complaints.length;
+    const pending = complaints.filter((c) => c.status === "pending").length;
+    const inProgress = complaints.filter((c) => c.status === "in-progress").length;
+    const resolved = complaints.filter((c) => c.status === "resolved").length;
+    const urgent = complaints.filter((c) => c.priority === "urgent" && c.status !== "resolved").length;
+    return { total, pending, inProgress, resolved, urgent };
+  }, [complaints]);
+
+  const recentComplaints = useMemo(() => {
+    return complaints.slice(0, 6).map((c) => ({
+      id: c.id,
+      title: c.title,
+      department: c.department,
+      status: c.status,
+      priority: c.priority,
+      date: formatDateShort(c.createdAt),
+    }));
+  }, [complaints]);
+
+  const departmentStats = useMemo(() => {
+    const byDept = new Map<string, { complaints: number; resolved: number }>();
+    for (const c of complaints) {
+      const current = byDept.get(c.department) ?? { complaints: 0, resolved: 0 };
+      current.complaints += 1;
+      if (c.status === "resolved") current.resolved += 1;
+      byDept.set(c.department, current);
+    }
+    return Array.from(byDept.entries())
+      .map(([name, value]) => ({ name, ...value }))
+      .sort((a, b) => b.complaints - a.complaints)
+      .slice(0, 6);
+  }, [complaints]);
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar />
@@ -87,33 +81,27 @@ const AdminDashboard = () => {
           <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4 animate-slide-up">
             <StatsCard
               title="Total Complaints"
-              value={156}
-              change="+12% from last month"
-              changeType="positive"
+              value={stats.total}
               icon={FileText}
               iconClassName="bg-primary/10 text-primary"
             />
             <StatsCard
               title="Pending"
-              value={24}
-              change="8 urgent"
-              changeType="negative"
+              value={stats.pending}
+              change={stats.urgent > 0 ? `${stats.urgent} urgent` : undefined}
+              changeType={stats.urgent > 0 ? "negative" : "neutral"}
               icon={Clock}
               iconClassName="bg-warning/10 text-warning"
             />
             <StatsCard
               title="In Progress"
-              value={18}
-              change="Average 2.5 days"
-              changeType="neutral"
+              value={stats.inProgress}
               icon={AlertTriangle}
               iconClassName="bg-info/10 text-info"
             />
             <StatsCard
               title="Resolved"
-              value={114}
-              change="73% resolution rate"
-              changeType="positive"
+              value={stats.resolved}
               icon={CheckCircle}
               iconClassName="bg-success/10 text-success"
             />
@@ -136,29 +124,29 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="divide-y divide-border">
-                  {recentComplaints.map((complaint) => (
-                    <Link
-                      key={complaint.id}
-                      to={`/admin/complaints/${complaint.id}`}
-                      className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-muted-foreground">
-                            {complaint.id}
-                          </span>
-                          <StatusBadge status={complaint.status} />
+                  {recentComplaints.length > 0 ? (
+                    recentComplaints.map((complaint) => (
+                      <Link
+                        key={complaint.id}
+                        to={`/admin/complaints/${complaint.id}`}
+                        className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground">{complaint.id}</span>
+                            <StatusBadge status={complaint.status} />
+                          </div>
+                          <p className="text-sm font-medium text-foreground truncate">{complaint.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {complaint.department} • {complaint.date}
+                          </p>
                         </div>
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {complaint.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {complaint.department} • {complaint.date}
-                        </p>
-                      </div>
-                      <PriorityBadge priority={complaint.priority} />
-                    </Link>
-                  ))}
+                        <PriorityBadge priority={complaint.priority} />
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-sm text-muted-foreground">No complaints yet</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -179,26 +167,28 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {departmentStats.map((dept, index) => (
-                    <div key={dept.name}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm font-medium text-foreground">
-                          {dept.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {dept.resolved}/{dept.complaints}
-                        </span>
+                  {departmentStats.length > 0 ? (
+                    departmentStats.map((dept) => (
+                      <div key={dept.name}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm font-medium text-foreground">{dept.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {dept.resolved}/{dept.complaints}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-500"
+                            style={{
+                              width: `${dept.complaints > 0 ? (dept.resolved / dept.complaints) * 100 : 0}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{
-                            width: `${(dept.resolved / dept.complaints) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No department data yet</div>
+                  )}
                 </div>
               </div>
 

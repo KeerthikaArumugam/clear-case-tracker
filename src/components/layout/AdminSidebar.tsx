@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const menuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -28,6 +29,8 @@ const menuItems = [
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (path: string) => {
@@ -102,20 +105,29 @@ const AdminSidebar = () => {
           <Avatar className="h-6 w-6">
             <AvatarImage src="" />
             <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
-              AD
+              {(user?.name ?? "Admin")
+                .split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((p) => p[0]!.toUpperCase())
+                .join("")}
             </AvatarFallback>
           </Avatar>
-          {!collapsed && <span>Admin Profile</span>}
+          {!collapsed && <span>{user?.name ?? "Admin"}</span>}
         </Link>
 
         {/* Logout */}
-        <Link
-          to="/login"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            navigate("/login", { replace: true });
+          }}
+          className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {!collapsed && <span>Sign Out</span>}
-        </Link>
+        </button>
       </div>
     </aside>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,90 +12,57 @@ import {
 } from "@/components/ui/select";
 import Navbar from "@/components/layout/Navbar";
 import ComplaintCard from "@/components/complaints/ComplaintCard";
-
-const allComplaints = [
-  {
-    id: "CMP-2024-001",
-    title: "Water leakage in Block A bathroom",
-    category: "Plumbing",
-    department: "Maintenance",
-    location: "Block A, Floor 2",
-    status: "in-progress" as const,
-    priority: "high" as const,
-    date: "Jan 5, 2024",
-  },
-  {
-    id: "CMP-2024-002",
-    title: "Broken AC unit in Room 302",
-    category: "Electrical",
-    department: "Facilities",
-    location: "Main Building, Room 302",
-    status: "pending" as const,
-    priority: "medium" as const,
-    date: "Jan 4, 2024",
-  },
-  {
-    id: "CMP-2024-003",
-    title: "Network connectivity issues in Library",
-    category: "IT Services",
-    department: "IT Department",
-    location: "Central Library",
-    status: "pending" as const,
-    priority: "high" as const,
-    date: "Jan 3, 2024",
-  },
-  {
-    id: "CMP-2023-089",
-    title: "Street light not working near parking",
-    category: "Electrical",
-    department: "Public Works",
-    location: "Parking Lot B",
-    status: "resolved" as const,
-    priority: "low" as const,
-    date: "Dec 28, 2023",
-  },
-  {
-    id: "CMP-2023-088",
-    title: "Garbage not collected from Block C",
-    category: "Cleanliness",
-    department: "Facilities",
-    location: "Block C",
-    status: "resolved" as const,
-    priority: "medium" as const,
-    date: "Dec 25, 2023",
-  },
-  {
-    id: "CMP-2023-087",
-    title: "Broken window in classroom 201",
-    category: "Infrastructure",
-    department: "Maintenance",
-    location: "Academic Block, Room 201",
-    status: "rejected" as const,
-    priority: "low" as const,
-    date: "Dec 20, 2023",
-  },
-];
+import { useAuth } from "@/components/auth/AuthProvider";
+import { formatDateShort, listComplaintsForUser } from "@/lib/appData";
 
 const MyComplaints = () => {
+  const { user } = useAuth();
+  const [complaints, setComplaints] = useState(
+    [] as Array<{
+      id: string;
+      title: string;
+      category: string;
+      department: string;
+      location: string;
+      status: "pending" | "in-progress" | "resolved" | "rejected";
+      priority: "low" | "medium" | "high" | "urgent";
+      date: string;
+    }>,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
 
-  const filteredComplaints = allComplaints.filter((complaint) => {
-    const matchesSearch =
-      complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      complaint.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || complaint.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || complaint.priority === priorityFilter;
+  useEffect(() => {
+    if (!user) return;
+    const data = listComplaintsForUser(user.id).map((c) => ({
+      id: c.id,
+      title: c.title,
+      category: c.category,
+      department: c.department,
+      location: c.location,
+      status: c.status,
+      priority: c.priority,
+      date: formatDateShort(c.createdAt),
+    }));
+    setComplaints(data);
+  }, [user]);
 
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter((complaint) => {
+      const matchesSearch =
+        complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        complaint.id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
+      const matchesPriority = priorityFilter === "all" || complaint.priority === priorityFilter;
+
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [complaints, searchQuery, statusFilter, priorityFilter]);
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn userName="John Doe" />
+      <Navbar />
 
       <main className="container mx-auto px-4 py-8">
         {/* Header */}

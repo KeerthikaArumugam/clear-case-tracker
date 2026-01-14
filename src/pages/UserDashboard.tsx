@@ -5,50 +5,62 @@ import Navbar from "@/components/layout/Navbar";
 import StatsCard from "@/components/dashboard/StatsCard";
 import ComplaintCard from "@/components/complaints/ComplaintCard";
 import FloatingActionButton from "@/components/ui/floating-action-button";
-
-const recentComplaints = [
-  {
-    id: "CMP-2024-001",
-    title: "Water leakage in Block A bathroom",
-    category: "Plumbing",
-    department: "Maintenance",
-    location: "Block A, Floor 2",
-    status: "in-progress" as const,
-    priority: "high" as const,
-    date: "Jan 5, 2024",
-  },
-  {
-    id: "CMP-2024-002",
-    title: "Broken AC unit in Room 302",
-    category: "Electrical",
-    department: "Facilities",
-    location: "Main Building, Room 302",
-    status: "pending" as const,
-    priority: "medium" as const,
-    date: "Jan 4, 2024",
-  },
-  {
-    id: "CMP-2023-089",
-    title: "Street light not working near parking",
-    category: "Electrical",
-    department: "Public Works",
-    location: "Parking Lot B",
-    status: "resolved" as const,
-    priority: "low" as const,
-    date: "Dec 28, 2023",
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { formatDateShort, listComplaintsForUser } from "@/lib/appData";
 
 const UserDashboard = () => {
+  const { user } = useAuth();
+  const [recentComplaints, setRecentComplaints] = useState(
+    [] as Array<{
+      id: string;
+      title: string;
+      category: string;
+      department: string;
+      location: string;
+      status: "pending" | "in-progress" | "resolved" | "rejected";
+      priority: "low" | "medium" | "high" | "urgent";
+      date: string;
+    }>,
+  );
+
+  const stats = useMemo(() => {
+    const all = user ? listComplaintsForUser(user.id) : [];
+    return {
+      total: all.length,
+      pending: all.filter((c) => c.status === "pending").length,
+      inProgress: all.filter((c) => c.status === "in-progress").length,
+      resolved: all.filter((c) => c.status === "resolved").length,
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const all = listComplaintsForUser(user.id);
+    const top = all.slice(0, 3).map((c) => ({
+      id: c.id,
+      title: c.title,
+      category: c.category,
+      department: c.department,
+      location: c.location,
+      status: c.status,
+      priority: c.priority,
+      date: formatDateShort(c.createdAt),
+    }));
+    setRecentComplaints(top);
+  }, [user]);
+
+  const firstName = user?.name?.split(" ").filter(Boolean)[0] ?? "there";
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn userName="John Doe" userEmail="john@example.com" />
+      <Navbar />
 
       <main className="container mx-auto px-4 py-8 pb-24 lg:pb-8">
         {/* Welcome Section */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-            Welcome back, <span className="gradient-text">John</span>
+            Welcome back, <span className="gradient-text">{firstName}</span>
           </h1>
           <p className="mt-1 text-muted-foreground">
             Track and manage your complaints in one place
@@ -69,25 +81,25 @@ const UserDashboard = () => {
         <div className="mb-8 grid gap-4 grid-cols-2 lg:grid-cols-4 animate-slide-up" style={{ animationDelay: "0.1s" }}>
           <StatsCard
             title="Total Complaints"
-            value={12}
+            value={stats.total}
             icon={FileText}
             iconClassName="bg-primary/10 text-primary"
           />
           <StatsCard
             title="Pending"
-            value={3}
+            value={stats.pending}
             icon={Clock}
             iconClassName="bg-warning/10 text-warning"
           />
           <StatsCard
             title="In Progress"
-            value={2}
+            value={stats.inProgress}
             icon={AlertTriangle}
             iconClassName="bg-info/10 text-info"
           />
           <StatsCard
             title="Resolved"
-            value={7}
+            value={stats.resolved}
             icon={CheckCircle}
             iconClassName="bg-success/10 text-success"
           />
@@ -106,9 +118,18 @@ const UserDashboard = () => {
           </div>
 
           <div className="space-y-3">
-            {recentComplaints.map((complaint) => (
-              <ComplaintCard key={complaint.id} {...complaint} />
-            ))}
+            {recentComplaints.length > 0 ? (
+              recentComplaints.map((complaint) => <ComplaintCard key={complaint.id} {...complaint} />)
+            ) : (
+              <div className="card-elevated p-10 text-center">
+                <p className="text-muted-foreground">No complaints yet</p>
+                <Link to="/submit-complaint">
+                  <Button variant="outline" className="mt-4">
+                    Register your first complaint
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </main>

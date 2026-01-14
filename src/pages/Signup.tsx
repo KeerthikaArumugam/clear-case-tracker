@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/layout/Navbar";
+import { ButtonLoader } from "@/components/ui/loading-spinner";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -15,10 +18,24 @@ const Signup = () => {
     password: "",
   });
   const navigate = useNavigate();
+  const { signup, user } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/dashboard");
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const result = await signup(formData);
+    setIsSubmitting(false);
+
+    if (!result.ok) {
+      toast({ title: "Sign up failed", description: result.error, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Account created", description: "Welcome to SmartTrack." });
+    navigate("/dashboard", { replace: true });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +51,7 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Navbar isLoggedIn={Boolean(user)} userName={user?.name} userEmail={user?.email} />
 
       <main className="container mx-auto px-4 py-12">
         <div className="mx-auto max-w-4xl">
@@ -145,9 +162,9 @@ const Signup = () => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" size="lg">
+                  <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
                     Create Account
-                    <ArrowRight className="h-4 w-4" />
+                    {isSubmitting ? <ButtonLoader /> : <ArrowRight className="h-4 w-4" />}
                   </Button>
                 </form>
 

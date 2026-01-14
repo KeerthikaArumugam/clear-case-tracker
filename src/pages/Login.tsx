@@ -1,30 +1,48 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/layout/Navbar";
+import { ButtonLoader } from "@/components/ui/loading-spinner";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, user } = useAuth();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Demo: navigate to dashboard
-    if (email.includes("admin")) {
-      navigate("/admin");
-    } else {
-      navigate("/dashboard");
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    const result = await login(email, password);
+    setIsSubmitting(false);
+
+    if (!result.ok) {
+      toast({ title: "Sign in failed", description: result.error, variant: "destructive" });
+      return;
     }
+
+    const from = (location.state as { from?: string } | null)?.from;
+    const defaultTarget = result.user.role === "admin" ? "/admin" : "/dashboard";
+    const target =
+      from && (from.startsWith("/admin") ? result.user.role === "admin" : true) ? from : defaultTarget;
+
+    navigate(target, { replace: true });
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Navbar isLoggedIn={Boolean(user)} userName={user?.name} userEmail={user?.email} />
 
       <main className="container mx-auto px-4 py-12">
         <div className="mx-auto max-w-md">
@@ -84,9 +102,9 @@ const Login = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" size="lg">
+              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
                 Sign In
-                <ArrowRight className="h-4 w-4" />
+                {isSubmitting ? <ButtonLoader /> : <ArrowRight className="h-4 w-4" />}
               </Button>
             </form>
 
@@ -98,7 +116,9 @@ const Login = () => {
             </div>
 
             <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center text-xs text-muted-foreground">
-              <p><strong>Demo:</strong> Use "admin@example.com" for admin view</p>
+              <p>
+                <strong>Demo:</strong> admin@smarttrack.com / Admin123! or john@smarttrack.com / User123!
+              </p>
             </div>
           </div>
         </div>

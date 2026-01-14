@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, Download, MoreHorizontal, Trash2, UserPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,62 +24,24 @@ import PriorityBadge from "@/components/complaints/PriorityBadge";
 import Breadcrumbs from "@/components/ui/breadcrumbs";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { useToast } from "@/hooks/use-toast";
-
-const complaints = [
-  {
-    id: "CMP-2024-001",
-    title: "Water leakage in Block A bathroom",
-    submittedBy: "John Doe",
-    department: "Maintenance",
-    status: "in-progress" as const,
-    priority: "high" as const,
-    date: "Jan 5, 2024",
-    assignedTo: "Mike Johnson",
-  },
-  {
-    id: "CMP-2024-002",
-    title: "Broken AC unit in Room 302",
-    submittedBy: "Jane Smith",
-    department: "Facilities",
-    status: "pending" as const,
-    priority: "medium" as const,
-    date: "Jan 4, 2024",
-    assignedTo: "Unassigned",
-  },
-  {
-    id: "CMP-2024-003",
-    title: "Network connectivity issues in Library",
-    submittedBy: "Alice Brown",
-    department: "IT Department",
-    status: "pending" as const,
-    priority: "high" as const,
-    date: "Jan 3, 2024",
-    assignedTo: "Unassigned",
-  },
-  {
-    id: "CMP-2024-004",
-    title: "Parking lot lighting not working",
-    submittedBy: "Bob Wilson",
-    department: "Public Works",
-    status: "resolved" as const,
-    priority: "low" as const,
-    date: "Jan 2, 2024",
-    assignedTo: "Tom Davis",
-  },
-  {
-    id: "CMP-2024-005",
-    title: "Garbage collection delay in Block C",
-    submittedBy: "Carol White",
-    department: "Facilities",
-    status: "resolved" as const,
-    priority: "medium" as const,
-    date: "Jan 1, 2024",
-    assignedTo: "Sarah Lee",
-  },
-];
+import { deleteComplaint, formatDateShort, listAllComplaints, updateComplaintStatus } from "@/lib/appData";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const AdminComplaints = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [complaints, setComplaints] = useState(
+    [] as Array<{
+      id: string;
+      title: string;
+      submittedBy: string;
+      department: string;
+      status: "pending" | "in-progress" | "resolved" | "rejected";
+      priority: "low" | "medium" | "high" | "urgent";
+      date: string;
+      assignedTo: string;
+    }>,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -88,25 +50,50 @@ const AdminComplaints = () => {
   const [selectedComplaint, setSelectedComplaint] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const filteredComplaints = complaints.filter((complaint) => {
-    const matchesSearch =
-      complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      complaint.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      complaint.submittedBy.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || complaint.status === statusFilter;
-    const matchesDepartment =
-      departmentFilter === "all" ||
-      complaint.department.toLowerCase() === departmentFilter.toLowerCase();
+  const refresh = () => {
+    const rows = listAllComplaints().map((c) => ({
+      id: c.id,
+      title: c.title,
+      submittedBy: c.submittedByName,
+      department: c.department,
+      status: c.status,
+      priority: c.priority,
+      date: formatDateShort(c.createdAt),
+      assignedTo: c.assignedTo ?? "Unassigned",
+    }));
+    setComplaints(rows);
+  };
 
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const departmentOptions = useMemo(() => {
+    const unique = new Set(complaints.map((c) => c.department).filter(Boolean));
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [complaints]);
+
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter((complaint) => {
+      const matchesSearch =
+        complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        complaint.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        complaint.submittedBy.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
+      const matchesDepartment =
+        departmentFilter === "all" || complaint.department.toLowerCase() === departmentFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus && matchesDepartment;
+    });
+  }, [complaints, searchQuery, statusFilter, departmentFilter]);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setIsDeleting(false);
     setDeleteDialogOpen(false);
+    if (selectedComplaint) deleteComplaint(selectedComplaint);
+    refresh();
     toast({
       title: "Complaint Deleted",
       description: `Complaint ${selectedComplaint} has been deleted.`,
@@ -116,6 +103,8 @@ const AdminComplaints = () => {
   const handleCloseComplaint = async () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     setCloseDialogOpen(false);
+    if (selectedComplaint) updateComplaintStatus(selectedComplaint, "resolved", user?.name ?? "Admin");
+    refresh();
     toast({
       title: "Complaint Closed",
       description: `Complaint ${selectedComplaint} has been marked as resolved.`,
@@ -185,10 +174,11 @@ const AdminComplaints = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="facilities">Facilities</SelectItem>
-                    <SelectItem value="it department">IT Department</SelectItem>
-                    <SelectItem value="public works">Public Works</SelectItem>
+                    {departmentOptions.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Bell, User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -28,18 +29,30 @@ const Navbar = ({
 }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user: authUser, logout } = useAuth();
 
-  const navLinks = isLoggedIn
-    ? [
-        { href: "/dashboard", label: "Home" },
-        { href: "/my-complaints", label: "My Complaints" },
-        { href: "/submit-complaint", label: "New Complaint" },
-      ]
-    : [
-        { href: "/", label: "Home" },
-        { href: "/login", label: "Login" },
-        { href: "/signup", label: "Sign Up" },
-      ];
+  const effectiveUser = authUser
+    ? { name: authUser.name, email: authUser.email, role: authUser.role }
+    : isLoggedIn
+      ? { name: userName, email: userEmail, role: "user" as const }
+      : null;
+
+  const effectiveIsLoggedIn = Boolean(effectiveUser);
+
+  const navLinks = effectiveIsLoggedIn
+    ? effectiveUser?.role === "admin"
+      ? [
+          { href: "/admin", label: "Dashboard" },
+          { href: "/admin/complaints", label: "Complaints" },
+          { href: "/admin/reports", label: "Reports" },
+        ]
+      : [
+          { href: "/dashboard", label: "Home" },
+          { href: "/my-complaints", label: "My Complaints" },
+          { href: "/submit-complaint", label: "New Complaint" },
+        ]
+    : [{ href: "/", label: "Home" }, { href: "/login", label: "Login" }, { href: "/signup", label: "Sign Up" }];
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -52,12 +65,21 @@ const Navbar = ({
       .slice(0, 2);
   };
 
+  const handleSignOut = () => {
+    logout();
+    setIsMenuOpen(false);
+    navigate("/login", { replace: true });
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 transition-colors">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
+          <Link
+            to={effectiveIsLoggedIn ? (effectiveUser?.role === "admin" ? "/admin" : "/dashboard") : "/"}
+            className="flex items-center gap-2"
+          >
             <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-bg">
               <span className="text-lg font-bold text-primary-foreground">S</span>
             </div>
@@ -88,7 +110,7 @@ const Navbar = ({
           <div className="flex items-center gap-2">
             <ThemeSwitcher />
 
-            {isLoggedIn && (
+            {effectiveIsLoggedIn && (
               <>
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-5 w-5" />
@@ -103,35 +125,52 @@ const Navbar = ({
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={userAvatar} />
                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {getInitials(userName)}
+                          {getInitials(effectiveUser?.name ?? userName)}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <div className="px-2 py-2">
-                      <p className="text-sm font-medium text-foreground">{userName}</p>
-                      <p className="text-xs text-muted-foreground">{userEmail}</p>
+                      <p className="text-sm font-medium text-foreground">{effectiveUser?.name ?? userName}</p>
+                      <p className="text-xs text-muted-foreground">{effectiveUser?.email ?? userEmail}</p>
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/profile" className="flex items-center gap-2">
+                      <Link
+                        to={effectiveUser?.role === "admin" ? "/admin/profile" : "/profile"}
+                        className="flex items-center gap-2"
+                      >
                         <User className="h-4 w-4" />
                         Profile
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/my-complaints" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        My Complaints
-                      </Link>
-                    </DropdownMenuItem>
+                    {effectiveUser?.role !== "admin" && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/my-complaints" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          My Complaints
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {effectiveUser?.role === "admin" && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin/complaints" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Manage Complaints
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/login" className="flex items-center gap-2 text-destructive">
-                        <LogOut className="h-4 w-4" />
-                        Sign Out
-                      </Link>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleSignOut();
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -153,17 +192,17 @@ const Navbar = ({
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="border-t border-border py-4 md:hidden animate-fade-in">
-            {isLoggedIn && (
+            {effectiveIsLoggedIn && (
               <div className="flex items-center gap-3 px-4 pb-4 mb-4 border-b border-border">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={userAvatar} />
                   <AvatarFallback className="bg-primary/10 text-primary">
-                    {getInitials(userName)}
+                    {getInitials(effectiveUser?.name ?? userName)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{userName}</p>
-                  <p className="text-xs text-muted-foreground">{userEmail}</p>
+                  <p className="text-sm font-medium text-foreground">{effectiveUser?.name ?? userName}</p>
+                  <p className="text-xs text-muted-foreground">{effectiveUser?.email ?? userEmail}</p>
                 </div>
               </div>
             )}
@@ -183,22 +222,22 @@ const Navbar = ({
                   {link.label}
                 </Link>
               ))}
-              {isLoggedIn && (
+              {effectiveIsLoggedIn && (
                 <>
                   <Link
-                    to="/profile"
+                    to={effectiveUser?.role === "admin" ? "/admin/profile" : "/profile"}
                     onClick={() => setIsMenuOpen(false)}
                     className="px-4 py-3 text-sm font-medium rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   >
                     Profile Settings
                   </Link>
-                  <Link
-                    to="/login"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-4 py-3 text-sm font-medium rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="px-4 py-3 text-left text-sm font-medium rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
                   >
                     Sign Out
-                  </Link>
+                  </button>
                 </>
               )}
             </div>

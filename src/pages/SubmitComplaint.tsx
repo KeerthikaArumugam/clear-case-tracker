@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import Navbar from "@/components/layout/Navbar";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { createComplaint } from "@/lib/appData";
 
 const categories = [
   "Plumbing",
@@ -44,6 +46,7 @@ const priorities = [
 const SubmitComplaint = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [files, setFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     title: "",
@@ -72,16 +75,27 @@ const SubmitComplaint = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    const complaint = createComplaint({
+      title: formData.title,
+      category: formData.category,
+      department: formData.department,
+      location: formData.location,
+      priority: formData.priority as "low" | "medium" | "high" | "urgent",
+      description: formData.description,
+      submittedByUserId: user.id,
+      submittedByName: user.name,
+    });
     toast({
       title: "Complaint Submitted",
-      description: "Your complaint has been registered successfully. Ticket ID: CMP-2024-003",
+      description: `Your complaint has been registered successfully. Ticket ID: ${complaint.id}`,
     });
     navigate("/my-complaints");
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isLoggedIn userName="John Doe" />
+      <Navbar />
 
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -135,7 +149,7 @@ const SubmitComplaint = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat.toLowerCase()}>
+                        <SelectItem key={cat} value={cat}>
                           {cat}
                         </SelectItem>
                       ))}
@@ -156,7 +170,7 @@ const SubmitComplaint = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept.toLowerCase()}>
+                        <SelectItem key={dept} value={dept}>
                           {dept}
                         </SelectItem>
                       ))}
